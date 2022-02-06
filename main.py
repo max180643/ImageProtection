@@ -1,6 +1,7 @@
 import os
 import zlib
 import base64
+from glob import glob
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 
@@ -13,6 +14,8 @@ def menu():
     print("1. Generate RSA private/public key")
     print("2. Image Encryption (1 image)")
     print("3. Image Decryption (1 image)")
+    print("4. Image Encryption (directory)")
+    print("5. Image Decryption (directory)")
     print("0. Exit Program")
     separator()
 
@@ -146,6 +149,71 @@ def encrypt_image():
     separator()
     exit()
 
+def encrypt_all_image():
+    # Public key path
+    public_key_input = input("Enter public key path (Leave blank if use default): ")
+    separator()
+
+    if not public_key_input:
+        # Current directory
+        public_key_input = os.path.join(os.getcwd(), "public_key.pem")
+  
+    # Use the public key for encryption
+    fd = open(public_key_input, "rb")
+    public_key = fd.read()
+    fd.close()
+
+    # Directory path
+    directory_path = input("Enter directory path to encrypt: ")
+    separator()
+
+    # Output directory path
+    output_path = input("Enter encryption output directory path (Leave blank if use default): ")
+    separator()
+
+    if not output_path:
+        # Current directory
+        output_path = os.getcwd() + "/encrypted"
+
+        # Check directory is exist
+        if not os.path.exists(output_path):
+            os.makedirs('encrypted')
+
+    # Find image in directory
+    image_extension = ["jpg", "png", "gif"]
+    image_path_list = []
+
+    for ext in image_extension:
+        image_path_list.extend(glob('%s/*.%s' % (directory_path, ext)))
+
+    # Encrypt all image
+    for image_path in image_path_list:
+        # Encrypting message
+        original_name = os.path.basename(image_path)
+        print("Image '%s' encrypting..." % (original_name))
+
+        try:
+            # Our candidate file to be encrypted
+            fd = open(image_path, "rb")
+            unencrypted_blob = fd.read()
+            fd.close()
+
+            encrypted_blob = encrypt_blob(unencrypted_blob, public_key)
+
+            # Write the encrypted contents to a file
+            fd = open(os.path.join(output_path, original_name + ".lock"), "wb")
+            fd.write(encrypted_blob)
+            fd.close()
+
+            # Successfully encrypted message
+            print("Image '%s' successfully encrypted." % (original_name))
+        except:
+            # Unsuccessfully encrypted message
+            print("Image '%s' unsuccessfully encrypted." % (original_name))
+
+    separator()
+    exit()
+
 def decrypt_blob(encrypted_blob, private_key):
     # Import the private key and use for decryption using PKCS1_OAEP
     rsakey = RSA.importKey(private_key)
@@ -228,11 +296,73 @@ def decrypt_image():
     separator()
     exit()
 
+def decrypt_all_image():
+    # Private key path
+    private_key_input = input("Enter private key path (Leave blank if use default): ")
+    separator()
+
+    if not private_key_input:
+        # Current directory
+        private_key_input = os.path.join(os.getcwd(), "private_key.pem")
+
+    # Use the private key for decryption
+    fd = open(private_key_input, "rb")
+    private_key = fd.read()
+    fd.close()
+
+    # Directory path
+    directory_path = input("Enter directory path to decrypt: ")
+    separator()
+
+    # Output directory path
+    output_path = input("Enter decryption output directory path (Leave blank if use default): ")
+    separator()
+
+    if not output_path:
+        # Current directory
+        output_path = os.getcwd() + "/decrypted"
+
+        # Check directory is exist
+        if not os.path.exists(output_path):
+            os.makedirs('decrypted')
+    
+    # Find image in directory
+    image_extension = ["jpg", "png", "gif"]
+    image_path_list = []
+    image_path_list.extend(glob('%s/*.lock' % (directory_path)))
+    
+    # Decrypt all image
+    for image_path in image_path_list:
+        # Decrypting message
+        original_name = os.path.basename(image_path)
+        print("Image '%s' decrypting..." % (original_name))
+
+        try:
+            # Our candidate file to be decrypted
+            fd = open(image_path, "rb")
+            encrypted_blob = fd.read()
+            fd.close()
+
+            # Write the decrypted contents to a file
+            fd = open(os.path.join(output_path, original_name.replace(".lock", "")), "wb")
+            fd.write(decrypt_blob(encrypted_blob, private_key))
+            fd.close()
+
+            # Successfully decrypted message
+            print("Image '%s' successfully decrypted." % (original_name))
+        except:
+            # Unsuccessfully decrypted message
+            print("Image '%s' unsuccessfully decrypted." % (original_name))
+    
+    separator()
+    exit()
+
+
 def main():
     separator()
     print("ImageProtection by max180643")
     menu()
-    option = int(input("Select an option [1-4]: "))
+    option = int(input("Select an option [0-5]: "))
     separator()
 
     while option != 0:
@@ -245,10 +375,16 @@ def main():
         elif option == 3:
             # Decrypting image using the private key
             decrypt_image()
+        elif option == 4:
+            # Encrypting all image in directory using the public key
+            encrypt_all_image()
+        elif option == 5:
+            # Decrypting all image in directory using the private key
+            decrypt_all_image()
         else:
             print("Invalid option.")
             menu()
-            option = int(input("Select an option [1-4]: "))
+            option = int(input("Select an option [0-5]: "))
             separator()
 
     exit()
