@@ -163,3 +163,5 @@ public_key.pem
 
 decrypted/
 encrypted/
+
+.DS_Store

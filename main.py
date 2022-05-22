@@ -4,6 +4,7 @@ import base64
 from glob import glob
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from multiprocessing import Process
 
 def separator():
     print("-------------------------------------")
@@ -93,6 +94,26 @@ def encrypt_blob(blob, public_key):
     # Base 64 encode the encrypted file
     return base64.b64encode(encrypted)
 
+def encrypt_process(image_path, public_key, output_path, original_name):
+    try:
+        # Our candidate file to be encrypted
+        fd = open(image_path, "rb")
+        unencrypted_blob = fd.read()
+        fd.close()
+
+        encrypted_blob = encrypt_blob(unencrypted_blob, public_key)
+
+        # Write the encrypted contents to a file
+        fd = open(os.path.join(output_path, original_name + ".lock"), "wb")
+        fd.write(encrypted_blob)
+        fd.close()
+
+        # Successfully encrypted message
+        print("Image '%s' successfully encrypted." % (original_name))
+    except:
+        # Unsuccessfully encrypted message
+        print("Image '%s' unsuccessfully encrypted." % (original_name))
+
 def encrypt_image():
     # Public key path
     public_key_input = input("Enter public key path (Leave blank if use default): ")
@@ -127,24 +148,7 @@ def encrypt_image():
     original_name = os.path.basename(image_path)
     print("Image '%s' encrypting..." % (original_name))
 
-    try:
-        # Our candidate file to be encrypted
-        fd = open(image_path, "rb")
-        unencrypted_blob = fd.read()
-        fd.close()
-
-        encrypted_blob = encrypt_blob(unencrypted_blob, public_key)
-
-        # Write the encrypted contents to a file
-        fd = open(os.path.join(output_path, original_name + ".lock"), "wb")
-        fd.write(encrypted_blob)
-        fd.close()
-
-        # Successfully encrypted message
-        print("Image '%s' successfully encrypted." % (original_name))
-    except:
-        # Unsuccessfully encrypted message
-        print("Image '%s' unsuccessfully encrypted." % (original_name))
+    encrypt_process(image_path, public_key, output_path, original_name)
 
     separator()
     exit()
@@ -192,24 +196,8 @@ def encrypt_all_image():
         original_name = os.path.basename(image_path)
         print("Image '%s' encrypting..." % (original_name))
 
-        try:
-            # Our candidate file to be encrypted
-            fd = open(image_path, "rb")
-            unencrypted_blob = fd.read()
-            fd.close()
-
-            encrypted_blob = encrypt_blob(unencrypted_blob, public_key)
-
-            # Write the encrypted contents to a file
-            fd = open(os.path.join(output_path, original_name + ".lock"), "wb")
-            fd.write(encrypted_blob)
-            fd.close()
-
-            # Successfully encrypted message
-            print("Image '%s' successfully encrypted." % (original_name))
-        except:
-            # Unsuccessfully encrypted message
-            print("Image '%s' unsuccessfully encrypted." % (original_name))
+        process = Process(target=encrypt_process, args=(image_path, public_key, output_path, original_name))
+        process.start()
 
     separator()
     exit()
@@ -241,6 +229,24 @@ def decrypt_blob(encrypted_blob, private_key):
 
     # Return the decompressed decrypted data
     return zlib.decompress(decrypted)
+
+def decrypt_process(image_path, private_key, output_path, original_name):
+    try:
+        # Our candidate file to be decrypted
+        fd = open(image_path, "rb")
+        encrypted_blob = fd.read()
+        fd.close()
+
+        # Write the decrypted contents to a file
+        fd = open(os.path.join(output_path, original_name.replace(".lock", "")), "wb")
+        fd.write(decrypt_blob(encrypted_blob, private_key))
+        fd.close()
+
+        # Successfully decrypted message
+        print("Image '%s' successfully decrypted." % (original_name))
+    except:
+        # Unsuccessfully decrypted message
+        print("Image '%s' unsuccessfully decrypted." % (original_name))
 
 def decrypt_image():
     # Private key path
@@ -276,22 +282,7 @@ def decrypt_image():
     original_name = os.path.basename(image_path)
     print("Image '%s' decrypting..." % (original_name))
 
-    try:
-        # Our candidate file to be decrypted
-        fd = open(image_path, "rb")
-        encrypted_blob = fd.read()
-        fd.close()
-
-        # Write the decrypted contents to a file
-        fd = open(os.path.join(output_path, original_name.replace(".lock", "")), "wb")
-        fd.write(decrypt_blob(encrypted_blob, private_key))
-        fd.close()
-
-        # Successfully decrypted message
-        print("Image '%s' successfully decrypted." % (original_name))
-    except:
-        # Unsuccessfully decrypted message
-        print("Image '%s' unsuccessfully decrypted." % (original_name))
+    decrypt_process(image_path, private_key, output_path, original_name)
 
     separator()
     exit()
@@ -337,22 +328,8 @@ def decrypt_all_image():
         original_name = os.path.basename(image_path)
         print("Image '%s' decrypting..." % (original_name))
 
-        try:
-            # Our candidate file to be decrypted
-            fd = open(image_path, "rb")
-            encrypted_blob = fd.read()
-            fd.close()
-
-            # Write the decrypted contents to a file
-            fd = open(os.path.join(output_path, original_name.replace(".lock", "")), "wb")
-            fd.write(decrypt_blob(encrypted_blob, private_key))
-            fd.close()
-
-            # Successfully decrypted message
-            print("Image '%s' successfully decrypted." % (original_name))
-        except:
-            # Unsuccessfully decrypted message
-            print("Image '%s' unsuccessfully decrypted." % (original_name))
+        process = Process(target=decrypt_process, args=(image_path, private_key, output_path, original_name))
+        process.start()
     
     separator()
     exit()
@@ -389,4 +366,5 @@ def main():
 
     exit()
 
-main()
+if(__name__=='__main__'):
+    main()
